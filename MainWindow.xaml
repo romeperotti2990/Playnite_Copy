@@ -5,8 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Playnite_Copy"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="WOOOOOOAAAAAHHHHHH" Height="450" Width="800"
+        Icon="Assets/Icon.ico">
     <Grid>
+        <Button Content="Choose Exe!"  HorizontalAlignment="Left" VerticalAlignment="Center" Width="100" Height="50" Click="ChooseExe"/>
+        <Button Content="Open Eden"  HorizontalAlignment="Center" VerticalAlignment="Center" Width="100" Height="50" Click="Eden"/>
+        <TextBlock Text="Hello, World!" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,20,0,0"/>
 
     </Grid>
 </Window>
