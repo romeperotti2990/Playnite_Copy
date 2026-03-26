@@ -1,3 +1,7 @@
+#Repository/solution files
+*.sln
+
+
 # Binaries
 bin/
 obj/
