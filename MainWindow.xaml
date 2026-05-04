@@ -15,7 +15,7 @@
             <Button Content="Open Selected" Click="OpenExe_Click" Width="110"/>
         </StackPanel>
 
-        <ListBox x:Name="SavedList" Grid.Row="1" />
+        <ListBox x:Name="SavedList" Grid.Row="1" SelectionMode="Extended" />
         
         <TextBlock Grid.Row="2" Text="Double-click an item to open." HorizontalAlignment="Left" Margin="0,8,0,0"/>
     </Grid>

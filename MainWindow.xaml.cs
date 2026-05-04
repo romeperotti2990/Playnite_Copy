@@ -86,17 +86,29 @@ public partial class MainWindow : Window
 
     private void RemoveExe_Click(object sender, RoutedEventArgs e)
     {
-        if (SavedList.SelectedItem is string s)
+        if (SavedList.SelectedItems.Count > 0)
         {
-            SavedExes.Remove(s);
+            var selectedItems = new System.Collections.Generic.List<string>();
+            foreach (var item in SavedList.SelectedItems)
+            {
+                if (item is string s) selectedItems.Add(s);
+            }
+
+            foreach (var s in selectedItems)
+            {
+                SavedExes.Remove(s);
+            }
             SaveSavedExes();
-            Console.WriteLine("Removed: " + SavedExes);
+            Console.WriteLine("Removed items");
         }
     }
 
     private void OpenExe_Click(object sender, RoutedEventArgs e)
     {
-        if (SavedList.SelectedItem is string s) StartExe(s);
+        foreach (var item in SavedList.SelectedItems)
+        {
+            if (item is string s) StartExe(s);
+        }
     }
 
     private void SavedList_MouseDoubleClick(object? sender, MouseButtonEventArgs e)
