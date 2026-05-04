@@ -12,7 +12,7 @@ namespace Playnite_Copy;
 public partial class MainWindow : Window
 {
     private readonly string storeFile;
-    private ObservableCollection<string> SavedExes = new();
+    private ObservableCollection<GameEntry> SavedGames = new();
 
     public MainWindow()
     {
@@ -22,21 +22,21 @@ public partial class MainWindow : Window
         Directory.CreateDirectory(appDir);
         storeFile = Path.Combine(appDir, "saved_exes.json");
 
-        SavedList.ItemsSource = SavedExes;
+        SavedList.ItemsSource = SavedGames;
         SavedList.MouseDoubleClick += SavedList_MouseDoubleClick;
 
-        LoadSavedExes();
+        LoadSavedGames();
     }
 
-    private void LoadSavedExes()
+    private void LoadSavedGames()
     {
         try
         {
             if (!File.Exists(storeFile)) return;
             var json = File.ReadAllText(storeFile);
-            var list = JsonSerializer.Deserialize<string[]>(json) ?? Array.Empty<string>();
-            SavedExes.Clear();
-            foreach (var s in list) SavedExes.Add(s);
+            var list = JsonSerializer.Deserialize<GameEntry[]>(json) ?? Array.Empty<GameEntry>();
+            SavedGames.Clear();
+            foreach (var g in list) SavedGames.Add(g);
         }
         catch (Exception ex)
         {
@@ -44,12 +44,12 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SaveSavedExes()
+    private void SaveSavedGames()
     {
         try
         {
-            var arr = new string[SavedExes.Count];
-            SavedExes.CopyTo(arr, 0);
+            var arr = new GameEntry[SavedGames.Count];
+            SavedGames.CopyTo(arr, 0);
             var json = JsonSerializer.Serialize(arr, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(storeFile, json);
         }
@@ -63,24 +63,35 @@ public partial class MainWindow : Window
     {
         var dlg = new OpenFileDialog
         {
-            Filter = "Executable files (*.exe)|*.exe|All files (*.*)|*.*",
-            Title = "Select an executable",
+            Filter = "Executables and ROMs|*.exe;*.nso;*.nca;*.nro;*.nsp;*.xci;*.bk2;*.nes;*.sfc;*.gb;*.gbc;*.gba|Executables (*.exe)|*.exe|Switch ROMs|*.nsp;*.xci;*.nro|BizHawk ROMs|*.nes;*.sfc;*.gb;*.gbc;*.gba|All files (*.*)|*.*",
+            Title = "Select a Game or Emulator",
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
         };
         if (dlg.ShowDialog() != true) return;
 
         var path = dlg.FileName;
-        if (!File.Exists(path))
+        var ext = Path.GetExtension(path).ToLower();
+        
+        // Basic check: if it's not an EXE, treat it as a ROM and ask for emulator
+        if (ext != ".exe")
         {
-            MessageBox.Show("File not found: " + path);
-            return;
+            var emuDlg = new OpenFileDialog
+            {
+                Filter = "Executables (*.exe)|*.exe",
+                Title = "Select Emulator for this ROM",
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles)
+            };
+            
+            if (emuDlg.ShowDialog() == true)
+            {
+                SavedGames.Add(new GameEntry { ExePath = emuDlg.FileName, RomPath = path, Name = Path.GetFileNameWithoutExtension(path) });
+                SaveSavedGames();
+            }
         }
-
-        if (!SavedExes.Contains(path))
+        else
         {
-            SavedExes.Add(path);
-            SaveSavedExes();
-            Console.WriteLine("Saved: " + path);
+            SavedGames.Add(new GameEntry { ExePath = path, Name = Path.GetFileNameWithoutExtension(path) });
+            SaveSavedGames();
         }
     }
 
@@ -88,18 +99,17 @@ public partial class MainWindow : Window
     {
         if (SavedList.SelectedItems.Count > 0)
         {
-            var selectedItems = new System.Collections.Generic.List<string>();
+            var selectedItems = new System.Collections.Generic.List<GameEntry>();
             foreach (var item in SavedList.SelectedItems)
             {
-                if (item is string s) selectedItems.Add(s);
+                if (item is GameEntry g) selectedItems.Add(g);
             }
 
-            foreach (var s in selectedItems)
+            foreach (var g in selectedItems)
             {
-                SavedExes.Remove(s);
+                SavedGames.Remove(g);
             }
-            SaveSavedExes();
-            Console.WriteLine("Removed items");
+            SaveSavedGames();
         }
     }
 
@@ -107,33 +117,53 @@ public partial class MainWindow : Window
     {
         foreach (var item in SavedList.SelectedItems)
         {
-            if (item is string s) StartExe(s);
+            if (item is GameEntry g) StartGame(g);
         }
     }
 
     private void SavedList_MouseDoubleClick(object? sender, MouseButtonEventArgs e)
     {
-        if (SavedList.SelectedItem is string s) StartExe(s);
+        if (SavedList.SelectedItem is GameEntry g) StartGame(g);
     }
 
-    private void StartExe(string exePath)
+    private void StartGame(GameEntry game)
     {
-        if (!File.Exists(exePath))
+        if (!File.Exists(game.ExePath))
         {
-            MessageBox.Show("File not found: " + exePath);
+            MessageBox.Show("Emulator/Executable not found: " + game.ExePath);
             return;
         }
 
         try
         {
+            var arguments = string.Empty;
+            
+            if (game.IsRom)
+            {
+                var lowerExe = game.ExePath.ToLower();
+                if (lowerExe.Contains("yuzu") || lowerExe.Contains("ryujinx"))
+                {
+                    arguments = $"\"{game.RomPath}\""; // Simple path usually works for Switch emus
+                }
+                else if (lowerExe.Contains("emuhawk") || lowerExe.Contains("bizhawk"))
+                {
+                    arguments = $"\"{game.RomPath}\"";
+                }
+                else
+                {
+                    // Default fallback
+                    arguments = $"\"{game.RomPath}\"";
+                }
+            }
+
             var psi = new ProcessStartInfo
             {
-                FileName = exePath,
-                WorkingDirectory = Path.GetDirectoryName(exePath) ?? string.Empty,
+                FileName = game.ExePath,
+                Arguments = arguments,
+                WorkingDirectory = Path.GetDirectoryName(game.ExePath) ?? string.Empty,
                 UseShellExecute = true
             };
             Process.Start(psi);
-            Console.WriteLine("Started: " + exePath); // will appear if you run via dotnet run + OutputType=Exe
         }
         catch (Exception ex)
         {
